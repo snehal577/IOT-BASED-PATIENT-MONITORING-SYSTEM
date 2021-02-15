@@ -1,0 +1,220 @@
+whole code:
+
+
+
+#include <Wire.h> //Including wire library
+
+#include <SFE_BMP180.h> //Including BMP180 library
+
+#define ALTITUDE 35.6 //Altitude where I live (change this to your altitude)
+
+SFE_BMP180 pressure; //Creating an object
+#include <SoftwareSerial.h>
+
+#include <LiquidCrystal.h>
+#define USE_ARDUINO_INTERRUPTS true    
+#define DEBUG true
+//#define SSID "JioFi2_160EEA"     // "SSID-WiFiname" yogiraj put here your wifi name of mobie
+#define SSID "Realme 1"
+//#define PASS "redking@123" // "password"  yogirag give here wifi opaswword
+#define PASS "12345678"
+#define IP "184.106.153.149"      // thingspeak.com ip
+#include <SoftwareSerial.h>
+#include <PulseSensorPlayground.h>     // Includes the PulseSensorPlayground Library.
+
+
+LiquidCrystal lcd(2, 3, 4, 5, 6, 7);
+long last_millis=0;
+long current_millis=0;
+PulseSensorPlayground pulseSensor;
+String msg = "GET /update?api_key=MY490MGI21L1X36Q";
+//SoftwareSerial Serial(2,3);
+
+//Variables
+const int PulseWire = A2;       // PulseSensor PURPLE WIRE connected to ANALOG PIN 0
+const int LED13 = 13;          // The on-board Arduino LED, close to PIN 13.
+int Threshold = 550;           //for heart rate sensor
+float myTemp;
+int myBPM;
+String BPM;
+int HB;
+
+int error;
+int panic=10;
+int raw_myTemp;
+float Voltage;
+float tempC;
+String temp,temp1,temp2;
+void setup()
+{
+pinMode(10,INPUT);
+  lcd.begin(16,2);
+  pinMode(13,OUTPUT);
+  digitalWrite(13,LOW);
+  lcd.print("initialising...");
+  Serial.begin(115200);
+  delay(100);
+  Serial.println("AT");
+  delay(500);
+  Serial.println("AT+CWMODE=1");
+  delay(500);
+  pulseSensor.analogInput(PulseWire);  
+  pulseSensor.blinkOnPulse(LED13);       //auto-magically blink Arduino's LED with heartbeat.
+  pulseSensor.setThreshold(Threshold);  
+
+  // Double-check the "pulseSensor" object was created and "began" seeing a signal.
+   if (pulseSensor.begin()) {
+    Serial.println("We created a pulseSensor Object !");  //This prints one time at Arduino power-up,  or on Arduino reset.  
+  }
+ // Serial.println("AT");
+  Serial.println("AT");
+  delay(100);
+  lcd.clear();
+  lcd.print("connecting to");
+  lcd.setCursor(0,1);
+  lcd.print("To WIFI network");
+ if(Serial.find("OK"))
+  {
+   char it=connectWiFi();
+   if(it==true)
+   {
+    digitalWrite(13,HIGH);
+    lcd.clear();
+   lcd.print("WIFI connected");
+   }
+   else
+   {
+    lcd.clear();
+   lcd.print("not connected");
+   }
+  }
+
+}
+
+void loop()
+{
+
+
+ if(millis()-last_millis>1000)
+ {
+    getReadings();
+  updateInfo();
+ last_millis=millis();
+ 
+ }
+
+}
+
+void updateInfo()
+{
+ 
+  String cmd = "AT+CIPSTART=\"TCP\",\"";
+  cmd += IP;
+  cmd += "\",80";
+  Serial.println(cmd);
+ // Serial.println(cmd);
+  delay(500);
+  if(Serial.find("Error"))
+  {
+    return;
+    Serial.println("Connection error..... checking again...");
+  }
+ 
+  cmd = msg ;
+  cmd += "&field2=";    //field 2 for Hart bit
+  cmd += BPM;
+  cmd += "&field1=";  //field 1 for sugar
+  cmd += temp;
+   cmd += "&field3=";  //field 1 for temp
+  cmd += temp1;
+   cmd += "&field4=";  //field 1 for temp
+  cmd += temp2;
+  cmd += "\r\n";
+  Serial.print("AT+CIPSEND=");
+  Serial.println(cmd.length());
+  delay(500);
+  Serial.print(cmd);
+}
+
+boolean connectWiFi()
+{
+  String cmd="AT+CWJAP=\"";    //\"OPPO K1\",\"12345678\"";
+  cmd+=SSID;
+ cmd+="\",\"";
+  cmd+=PASS;
+  cmd+="\"";
+  Serial.println(cmd);
+  delay(3000);
+  if(Serial.find("OK"))
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+void getReadings(){
+  raw_myTemp = analogRead(A0);
+ Voltage = (raw_myTemp / 7);
+ myTemp= Voltage ;
+  lcd.clear();
+  lcd.print("S=");
+  lcd.print(myTemp);
+  int myBPM = pulseSensor.getBeatsPerMinute();  // Calls function on our pulseSensor object that returns BPM as an "int".
+                                               // "myBPM" hold this BPM value now.
+if (pulseSensor.sawStartOfBeat()) {            // Constantly test to see if "a beat happened".
+  lcd.setCursor(8,0);
+ lcd.print("H=");
+ lcd.print(myBPM);
+}
+/////////////////////////////////////////////////////////////////
+ pressure.begin();
+ char status;
+  double T, P, p0; //Creating variables for temp, pressure and relative pressure
+   
+
+    status = pressure.startTemperature();
+
+    delay(status);
+
+    status = pressure.getTemperature(T);
+ 
+      Serial.print("Temp: ");
+      Serial.print(T, 1);
+      Serial.println(" deg C");
+
+      lcd.setCursor(0,1);
+      lcd.print("T=");
+      lcd.print(T);
+     
+      status = pressure.startPressure(3);
+
+ 
+        delay(status);
+
+        status = pressure.getPressure(P, T);
+     
+          Serial.print("Pressure measurement: ");
+          Serial.print(P);
+          Serial.println(" hPa ");
+          lcd.setCursor(8,1);
+          lcd.print("P=");
+          lcd.print(P);
+     
+         
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+   delay(20);            
+    char buffer1[10];
+     char buffer2[10];
+     char buffer3[10];
+     char buffer4[10];
+    BPM = dtostrf(myBPM, 4, 1, buffer1);
+    temp = dtostrf(myTemp, 4, 1, buffer2);
+    temp1 = dtostrf(T, 4, 1, buffer3);
+    temp2 = dtostrf(P, 4, 1, buffer4);
+  }
+
+

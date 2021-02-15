@@ -1,0 +1,35 @@
+
+project code doc1
+Inboxx
+Dnyanada MahajanWed, Feb 26, 9:47 AM
+to me
+sugar sensor code:
+
+void setup()
+{
+ Serial.begin(9600);
+ Serial.println("SUGAR SENSOR PROJECT.....");
+ delay(1000);
+ Serial.println("PLZ BLOW ON THE SENSOR....");
+ delay(2000);
+}
+
+void loop()
+{
+float sensorValue=analogRead(A0);
+Serial.println("SUGAR VALUE=");
+if(sensorValue>65)
+{
+Serial.print(sensorValue/7);
+Serial.println("MG/DL");
+delay(5000);
+}
+}
+
+
+
+
+
+ReplyForward
+
+
